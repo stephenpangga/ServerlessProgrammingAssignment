@@ -84,10 +84,11 @@ namespace weatherImageAPI
 
         [FunctionName("weather-queue")]
 #pragma warning disable AZF0001 // Avoid async void
-        public async void SendThemeToAPIs([QueueTrigger("imagestorage")] string content, ILogger log)
+        public async void mergeAPIs([QueueTrigger("imagestorage")] string content, ILogger log)
 #pragma warning restore AZF0001 // Avoid async void
         {
-            log.LogInformation("Queue is running");
+            log.LogInformation("The queue, now collecting weather information and image from API's ");
+            
             //weather api
             string buienRadarAPI = "https://data.buienradar.nl/2.0/feed/json";
             //image api
@@ -100,8 +101,6 @@ namespace weatherImageAPI
                 string weatherContent = await apiFromBueinradar.Content.ReadAsStringAsync();
                 string weatherData = "{\"models\":" + weatherContent + "}";
                 Model.Root myDeserializedClass = JsonConvert.DeserializeObject<Model.Root>(weatherData);
-                //Console.WriteLine("Run the Queues");
-                //Console.WriteLine(myDeserializedClass.models.actual.stationmeasurements);
 
                 //image api
                 var imageApi = await client.GetAsync(imageLink);
@@ -114,7 +113,7 @@ namespace weatherImageAPI
                 CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
                 CloudBlobContainer Imagecontainer = blobClient.GetContainerReference("images");
 
-                log.LogInformation("Done merging the weather text with image");
+                log.LogInformation("Start writing weather info to image.");
 
                 //merge the 2 api to produce an image
                 for (int i = 0; i < image.Count; i++)
@@ -133,7 +132,7 @@ namespace weatherImageAPI
                     Console.WriteLine(photoLink);
                 }
 
-                log.LogInformation("Done merging the weather text with image");
+                log.LogInformation("Done merging the weather information with the images");
                 log.LogInformation("The generated images has been stored to the blob storage");
             }
             catch (Exception e)
