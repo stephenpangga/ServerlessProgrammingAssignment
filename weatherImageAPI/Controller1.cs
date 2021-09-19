@@ -67,13 +67,19 @@ namespace weatherImageAPI
             log.LogInformation("C# HTTP trigger function processed a request for weather json.");
 
             string name = req.Query["imagestorage"];
-            string webBase = @"https://weatherstorageforecast.blob.core.windows.net/images/1weather.png";
+            string webBase = @"https://weatherstorageforecast.blob.core.windows.net/images/";
+            string links = "";
             
+            for (int i = 0; i < 51; i++)
+            {
+                links += webBase + i +"weather.png\n";
+            }
+
             try
             {
                 await applicationQueue.AddAsync(name);
 
-                return new OkObjectResult("Your generated images with weather details will be available at: " + webBase);
+                return new OkObjectResult($"Your generated images with weather details will be available at: \n" + links);
             }
             catch (Exception e)
             {
@@ -87,7 +93,7 @@ namespace weatherImageAPI
         public async void mergeAPIs([QueueTrigger("imagestorage")] string content, ILogger log)
 #pragma warning restore AZF0001 // Avoid async void
         {
-            log.LogInformation("The queue, now collecting weather information and image from API's ");
+            log.LogInformation("The queue is now collecting weather information and image from API's ");
             
             //weather api
             string buienRadarAPI = "https://data.buienradar.nl/2.0/feed/json";
@@ -128,8 +134,8 @@ namespace weatherImageAPI
                     CloudBlockBlob blockBlob = Imagecontainer.GetBlockBlobReference(imageName + ".png");
                     blockBlob.Properties.ContentType = "image/png";
                     await blockBlob.UploadFromStreamAsync(mergeImage);
-                    var photoLink = blockBlob.Uri.AbsoluteUri;
-                    Console.WriteLine(photoLink);
+                    //var photoLink = blockBlob.Uri.AbsoluteUri;
+                    //Console.WriteLine(photoLink);
                 }
 
                 log.LogInformation("Done merging the weather information with the images");
