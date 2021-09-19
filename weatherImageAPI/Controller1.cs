@@ -87,6 +87,7 @@ namespace weatherImageAPI
         public async void SendThemeToAPIs([QueueTrigger("imagestorage")] string content, ILogger log)
 #pragma warning restore AZF0001 // Avoid async void
         {
+            log.LogInformation("Queue is running");
             //weather api
             string buienRadarAPI = "https://data.buienradar.nl/2.0/feed/json";
             //image api
@@ -99,8 +100,8 @@ namespace weatherImageAPI
                 string weatherContent = await apiFromBueinradar.Content.ReadAsStringAsync();
                 string weatherData = "{\"models\":" + weatherContent + "}";
                 Model.Root myDeserializedClass = JsonConvert.DeserializeObject<Model.Root>(weatherData);
-                Console.WriteLine("Run the Queues");
-                Console.WriteLine(myDeserializedClass.models.actual.stationmeasurements);
+                //Console.WriteLine("Run the Queues");
+                //Console.WriteLine(myDeserializedClass.models.actual.stationmeasurements);
 
                 //image api
                 var imageApi = await client.GetAsync(imageLink);
@@ -113,6 +114,7 @@ namespace weatherImageAPI
                 CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
                 CloudBlobContainer Imagecontainer = blobClient.GetContainerReference("images");
 
+                log.LogInformation("Done merging the weather text with image");
 
                 //merge the 2 api to produce an image
                 for (int i = 0; i < image.Count; i++)
@@ -131,8 +133,8 @@ namespace weatherImageAPI
                     Console.WriteLine(photoLink);
                 }
 
-                log.LogInformation("done merging text to image");
-                log.LogInformation("The images has been stored to the blob storage");
+                log.LogInformation("Done merging the weather text with image");
+                log.LogInformation("The generated images has been stored to the blob storage");
             }
             catch (Exception e)
             {

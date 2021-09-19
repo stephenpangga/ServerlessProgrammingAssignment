@@ -45,9 +45,9 @@ namespace weatherImageAPI.Model
 
         public override string ToString()
         {
-            return $"{stationid}, {stationname}, {timestamp}, \n" +
-                $"{weatherdescription}, {winddirection}, {temperature} \n" +
-                $"{windspeed} km/s";
+            return $"id: {stationid}, station name:{stationname}, timestamp:{timestamp}, \n" +
+                $"Weather description: {weatherdescription}, wind direction: {winddirection}, temperature: {temperature} \n" +
+                $"WindSpeed: {windspeed} km/s";
         }
     }
 
