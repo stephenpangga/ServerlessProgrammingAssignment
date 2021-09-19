@@ -12,9 +12,7 @@ using SixLabors.ImageSharp.Processing;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -26,9 +24,7 @@ namespace weatherImageAPI
         HttpClient client = new HttpClient();
 
         public async Task<MemoryStream> AddTextToImage(string imageUrl, string imageName, string text, float x, float y, int fontSize, string colorHex)
-        {
-            //We can use this part from their code cuz its just generic image loading stuff
-            
+        {            
             HttpResponseMessage response = await client.GetAsync(imageUrl);
             Stream stream;
             MemoryStream memoryStream = new MemoryStream();
@@ -46,11 +42,6 @@ namespace weatherImageAPI
             var image = Image.Load(stream);
 
             Font font = SystemFonts.CreateFont("Arial", fontSize);
-            //image.Mutate(x => x.DrawText(text, font, Color.Black, new PointF(0, 0)));
-
-            //image.Save(imageName + ".jpeg");
-            //image.SaveAsJpeg(memoryStream);
-            //image.SaveAsPng(memoryStream);
             image.Clone(img =>
             {
                 var textGraphicOptions = new TextGraphicsOptions()
@@ -96,8 +87,6 @@ namespace weatherImageAPI
         public async void SendThemeToAPIs([QueueTrigger("imagestorage")] string content, ILogger log)
 #pragma warning restore AZF0001 // Avoid async void
         {
-            //the image adder returns a MemoryStream which then needs to be added to the blob with:
-
             //weather api
             string buienRadarAPI = "https://data.buienradar.nl/2.0/feed/json";
             //image api
@@ -116,11 +105,7 @@ namespace weatherImageAPI
                 //image api
                 var imageApi = await client.GetAsync(imageLink);
                 var imageBody = await imageApi.Content.ReadAsStringAsync();
-
-
                 List<Model.Image> image = JsonConvert.DeserializeObject<List<Model.Image>>(imageBody);
-
-
 
                 //add the image to the blob storage
                 StorageCredentials creds = new StorageCredentials("weatherstorageforecast", "3B2TdyesiFnuZa+W5EObCT72NfYzv/s74uYHz4nQdlVlDIdT6KAMyncLGbuhjXNEgz/14KP5w+YH6Y/ZFa60nA==");
@@ -137,8 +122,6 @@ namespace weatherImageAPI
                     Model.Stationmeasurement stationMeasurement = myDeserializedClass.models.actual.stationmeasurements[i];
                     string text = stationMeasurement.ToString();
 
-                    //string imageUrl, string imageName, string text, float x, float y, int fontSize, string colorHex
-
                     MemoryStream mergeImage = await AddTextToImage(imageUrl,imageName,text, 0,0,100, "#EDC9F4");
 
                     CloudBlockBlob blockBlob = Imagecontainer.GetBlockBlobReference(imageName + ".png");
@@ -147,7 +130,6 @@ namespace weatherImageAPI
                     var photoLink = blockBlob.Uri.AbsoluteUri;
                     Console.WriteLine(photoLink);
                 }
-
 
                 log.LogInformation("done merging text to image");
                 log.LogInformation("The images has been stored to the blob storage");
