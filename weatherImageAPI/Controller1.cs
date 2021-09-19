@@ -73,7 +73,7 @@ namespace weatherImageAPI
             {
                 await applicationQueue.AddAsync(name);
 
-                return new OkObjectResult("Your images will be available soon at: " + webBase);
+                return new OkObjectResult("Your generated images with weather details will be available at: " + webBase);
             }
             catch (Exception e)
             {
