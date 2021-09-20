@@ -22,10 +22,13 @@ namespace weatherImageAPI
     public class Controller1
     {
         HttpClient client = new HttpClient();
+        ILogger logger { get; }
 
-        //logger
-
-        public async Task<MemoryStream> AddTextToImage(string imageUrl, string imageName, string text, float x, float y, int fontSize, string colorHex)
+        public Controller1(ILogger<Controller1> Log)
+        {
+            this.logger = Log;
+        }
+        public async Task<MemoryStream> AddTextToImage(string imageUrl, string imageName, string text, float x, float y, int fontSize)
         {            
             HttpResponseMessage response = await client.GetAsync(imageUrl);
             Stream stream;
@@ -62,49 +65,54 @@ namespace weatherImageAPI
 
         [FunctionName("GetImagesWithWeatherInfo1")]
         public async Task<IActionResult> GetImagesWithWeatherInfo(
-            [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequest req, ILogger log,
+            [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequest req,
             [Queue("imagestorage")] IAsyncCollector<String> applicationQueue)
         {
 
-            log.LogInformation("C# HTTP trigger function processed a request for weather json.");
+            logger.LogInformation("C# HTTP trigger function processed a request for weather json.");
 
             string name = req.Query["imagestorage"];
 
-            /// prolly need to fix what links to show here.
             string webBase = @"https://weatherstorageforecast.blob.core.windows.net/images/";
             string links = "";
             
             for (int i = 0; i < 51; i++)
             {
-                links += webBase + i +"weather.png\n";
+                links += webBase + i + "weather?sv=2020-04-08&si=readOnly&sr=c&sig=pQ8LcLEH6GKDZBEISyLOrNlr6BWU6cXmaEzHSFtJp1E%3D \n";
             }
 
             try
             {
                 await applicationQueue.AddAsync(name);
 
-                //return new OkObjectResult($"Your generated images with weather details will be available at: \n" + links);
-                var content = $"<html><body><h1>Hello World</h1><p>{links}<\br></p></body></html>";
+                return new OkObjectResult($"Your generated images with weather details will be available at: \n" + links);
+                /*var content = "<html>" +
+                    "<body>" +
+                        "<h1>Hello World</h1>" +
+                        "<p>"+ links +"<br>" +
+                        "</p>" +
+                    "</body>" +
+                    "</html>";
 
                 return new ContentResult()
                 {
                     Content = content,
                     ContentType = "text/html",
-                }; ;
+                }; ;*/
             }
             catch (Exception e)
             {
-                log.LogError(e.Message);
+                logger.LogError(e.Message);
                 return new BadRequestObjectResult(e.Message);
             }
         }
 
         [FunctionName("weather-queue")]
 #pragma warning disable AZF0001 // Avoid async void
-        public async void mergeAPIs([QueueTrigger("imagestorage")] string content, ILogger log)
+        public async void mergeAPIs([QueueTrigger("imagestorage")] string content)
 #pragma warning restore AZF0001 // Avoid async void
         {
-            log.LogInformation("The queue is now collecting weather information and image from API's ");
+            logger.LogInformation("The queue is now collecting weather information and image from API's ");
             
             //weather api
             string buienRadarAPI = "https://data.buienradar.nl/2.0/feed/json";
@@ -125,12 +133,12 @@ namespace weatherImageAPI
                 List<Model.Image> image = JsonConvert.DeserializeObject<List<Model.Image>>(imageBody);
 
                 //add the image to the blob storage
-                StorageCredentials creds = new StorageCredentials("weatherstorageforecast", "5KG5BxzVTu+7K+MZW7ER4rN1MLyAY0gHA/Y0QuEGeaLOBSlRMEeh/yAfiSZWPLnFzPTWa+Jj7Aq+nkBGJpSfsg==");
-                CloudStorageAccount storageAccount = new CloudStorageAccount(creds, useHttps: true);
+                StorageCredentials credentials = new StorageCredentials("weatherstorageforecast", "5KG5BxzVTu+7K+MZW7ER4rN1MLyAY0gHA/Y0QuEGeaLOBSlRMEeh/yAfiSZWPLnFzPTWa+Jj7Aq+nkBGJpSfsg==");
+                CloudStorageAccount storageAccount = new CloudStorageAccount(credentials, useHttps: true);
                 CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
                 CloudBlobContainer Imagecontainer = blobClient.GetContainerReference("images");
 
-                log.LogInformation("Start writing weather info to image.");
+                logger.LogInformation("Start writing weather info to image.");
 
                 //merge the 2 api to produce an image
                 for (int i = 0; i < image.Count; i++)
@@ -140,25 +148,24 @@ namespace weatherImageAPI
                     Model.Stationmeasurement stationMeasurement = myDeserializedClass.models.actual.stationmeasurements[i];
                     string text = stationMeasurement.ToString();
 
-                    MemoryStream mergeImage = await AddTextToImage(imageUrl,imageName,text, 0,0,100, "#EDC9F4");
+                    MemoryStream mergeImage = await AddTextToImage(imageUrl,imageName,text, 0,0,100);
 
                     CloudBlockBlob blockBlob = Imagecontainer.GetBlockBlobReference(imageName);
                     blockBlob.Properties.ContentType = "image/png";
                     await blockBlob.UploadFromStreamAsync(mergeImage);
-                    var photoLink = blockBlob.Uri.AbsoluteUri;
-                    Console.WriteLine(photoLink);
+                    //var photoLink = blockBlob.Uri.AbsoluteUri;
+                    //Console.WriteLine(photoLink);
                 }
 
-                log.LogInformation("Done merging the weather information with the images");
-                log.LogInformation("The generated images has been stored to the blob storage");
+                logger.LogInformation("Done merging the weather information with the images");
+                logger.LogInformation("The generated images has been stored to the blob storage");
             }
             catch (Exception e)
             {
-                log.LogInformation(e.Message);
+                logger.LogInformation(e.Message);
             } 
         }
     }
 }
-
 
 //https://weatherstorageforecast.blob.core.windows.net/images/{nameoffile}?sp=r&st=2021-09-20T11:07:07Z&se=2021-09-20T19:07:07Z&spr=https&sv=2020-08-04&sr=c&sig=%2BU5Qrnw3FsKabxOW0R95dmnwCg6gj3BB9Kfivip8Qks%3D
