@@ -23,6 +23,8 @@ namespace weatherImageAPI
     {
         HttpClient client = new HttpClient();
 
+        //logger
+
         public async Task<MemoryStream> AddTextToImage(string imageUrl, string imageName, string text, float x, float y, int fontSize, string colorHex)
         {            
             HttpResponseMessage response = await client.GetAsync(imageUrl);
@@ -67,6 +69,8 @@ namespace weatherImageAPI
             log.LogInformation("C# HTTP trigger function processed a request for weather json.");
 
             string name = req.Query["imagestorage"];
+
+            /// prolly need to fix what links to show here.
             string webBase = @"https://weatherstorageforecast.blob.core.windows.net/images/";
             string links = "";
             
@@ -79,7 +83,14 @@ namespace weatherImageAPI
             {
                 await applicationQueue.AddAsync(name);
 
-                return new OkObjectResult($"Your generated images with weather details will be available at: \n" + links);
+                //return new OkObjectResult($"Your generated images with weather details will be available at: \n" + links);
+                var content = $"<html><body><h1>Hello World</h1><p>{links}<\br></p></body></html>";
+
+                return new ContentResult()
+                {
+                    Content = content,
+                    ContentType = "text/html",
+                }; ;
             }
             catch (Exception e)
             {
@@ -114,7 +125,7 @@ namespace weatherImageAPI
                 List<Model.Image> image = JsonConvert.DeserializeObject<List<Model.Image>>(imageBody);
 
                 //add the image to the blob storage
-                StorageCredentials creds = new StorageCredentials("weatherstorageforecast", "3B2TdyesiFnuZa+W5EObCT72NfYzv/s74uYHz4nQdlVlDIdT6KAMyncLGbuhjXNEgz/14KP5w+YH6Y/ZFa60nA==");
+                StorageCredentials creds = new StorageCredentials("weatherstorageforecast", "5KG5BxzVTu+7K+MZW7ER4rN1MLyAY0gHA/Y0QuEGeaLOBSlRMEeh/yAfiSZWPLnFzPTWa+Jj7Aq+nkBGJpSfsg==");
                 CloudStorageAccount storageAccount = new CloudStorageAccount(creds, useHttps: true);
                 CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
                 CloudBlobContainer Imagecontainer = blobClient.GetContainerReference("images");
@@ -131,11 +142,11 @@ namespace weatherImageAPI
 
                     MemoryStream mergeImage = await AddTextToImage(imageUrl,imageName,text, 0,0,100, "#EDC9F4");
 
-                    CloudBlockBlob blockBlob = Imagecontainer.GetBlockBlobReference(imageName + ".png");
+                    CloudBlockBlob blockBlob = Imagecontainer.GetBlockBlobReference(imageName);
                     blockBlob.Properties.ContentType = "image/png";
                     await blockBlob.UploadFromStreamAsync(mergeImage);
-                    //var photoLink = blockBlob.Uri.AbsoluteUri;
-                    //Console.WriteLine(photoLink);
+                    var photoLink = blockBlob.Uri.AbsoluteUri;
+                    Console.WriteLine(photoLink);
                 }
 
                 log.LogInformation("Done merging the weather information with the images");
@@ -148,3 +159,6 @@ namespace weatherImageAPI
         }
     }
 }
+
+
+//https://weatherstorageforecast.blob.core.windows.net/images/{nameoffile}?sp=r&st=2021-09-20T11:07:07Z&se=2021-09-20T19:07:07Z&spr=https&sv=2020-08-04&sr=c&sig=%2BU5Qrnw3FsKabxOW0R95dmnwCg6gj3BB9Kfivip8Qks%3D
