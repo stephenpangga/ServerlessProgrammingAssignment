@@ -22,11 +22,21 @@ namespace weatherImageAPI
     public class Controller1
     {
         HttpClient client = new HttpClient();
+
+        StorageCredentials credentials;
+        CloudStorageAccount storageAccount;
+        CloudBlobClient blobClient;
+        CloudBlobContainer Imagecontainer;
+
         ILogger logger { get; }
 
         public Controller1(ILogger<Controller1> Log)
         {
             this.logger = Log;
+            credentials = new StorageCredentials("weatherstorageforecast", "5KG5BxzVTu+7K+MZW7ER4rN1MLyAY0gHA/Y0QuEGeaLOBSlRMEeh/yAfiSZWPLnFzPTWa+Jj7Aq+nkBGJpSfsg==");
+            storageAccount = new CloudStorageAccount(credentials, useHttps: true);
+            blobClient = storageAccount.CreateCloudBlobClient();
+            Imagecontainer = blobClient.GetContainerReference("images");
         }
         public async Task<MemoryStream> AddTextToImage(string imageUrl, string imageName, string text, float x, float y, int fontSize)
         {            
@@ -65,7 +75,7 @@ namespace weatherImageAPI
 
         [FunctionName("GetImagesWithWeatherInfo1")]
         public async Task<IActionResult> GetImagesWithWeatherInfo(
-            [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "GetImagesWithWeatherInfo1")] HttpRequest req,
             [Queue("imagestorage")] IAsyncCollector<String> applicationQueue)
         {
 
@@ -132,11 +142,11 @@ namespace weatherImageAPI
                 var imageBody = await imageApi.Content.ReadAsStringAsync();
                 List<Model.Image> image = JsonConvert.DeserializeObject<List<Model.Image>>(imageBody);
 
-                //add the image to the blob storage
+               /* //add the image to the blob storage
                 StorageCredentials credentials = new StorageCredentials("weatherstorageforecast", "5KG5BxzVTu+7K+MZW7ER4rN1MLyAY0gHA/Y0QuEGeaLOBSlRMEeh/yAfiSZWPLnFzPTWa+Jj7Aq+nkBGJpSfsg==");
                 CloudStorageAccount storageAccount = new CloudStorageAccount(credentials, useHttps: true);
                 CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-                CloudBlobContainer Imagecontainer = blobClient.GetContainerReference("images");
+                CloudBlobContainer Imagecontainer = blobClient.GetContainerReference("images");*/
 
                 logger.LogInformation("Start writing weather info to image.");
 
@@ -165,7 +175,21 @@ namespace weatherImageAPI
                 logger.LogInformation(e.Message);
             } 
         }
+
+       /* public string creatUri()
+        {
+            SharedAccessPolicy sap = new SharedAccessPolicy
+            {
+                SharedAccessStartTime = now,
+                SharedAccessExpiryTime = now.AddHours(1),
+                Permissions = SharedAccessPermissions.Read | SharedAccessPermissions.Write | SharedAccessPermissions.Delete
+            };
+
+            string sas = blobClient.GetSharedAccessSignature(sap);
+
+            return sas;
+        }*/
     }
 }
-
+//example link
 //https://weatherstorageforecast.blob.core.windows.net/images/{nameoffile}?sp=r&st=2021-09-20T11:07:07Z&se=2021-09-20T19:07:07Z&spr=https&sv=2020-08-04&sr=c&sig=%2BU5Qrnw3FsKabxOW0R95dmnwCg6gj3BB9Kfivip8Qks%3D
